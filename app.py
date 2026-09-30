@@ -40,13 +40,21 @@ if intervals_id and intervals_api_key:
             response = requests.get(url, auth=(
                 "API_KEY", intervals_api_key), timeout=5)
 
-        if response.status_code == 200:
+       if response.status_code == 200:
             data_wellness = response.json()
             if data_wellness:
                 if "hrv" in data_wellness and data_wellness["hrv"] is not None:
                     vfc_input_default = float(data_wellness["hrv"])
                 if "restingHR" in data_wellness and data_wellness["restingHR"] is not None:
                     rhr_input_default = float(data_wellness["restingHR"])
+                
+                # Captura flexible del sueño (admite horas directas o segundos convertidos)
+                if "sleep" in data_wellness and data_wellness["sleep"] is not None:
+                    sueno_input_default = float(data_wellness["sleep"])
+                elif "sleepSecs" in data_wellness and data_wellness["sleepSecs"] is not None:
+                    # Convierte segundos a horas decimales
+                    sueno_input_default = float(data_wellness["sleepSecs"]) / 3600.0
+
                 if "ctl" in data_wellness and "atl" in data_wellness:
                     ctl_val = data_wellness.get("ctl", 0) or 0
                     atl_val = data_wellness.get("atl", 0) or 0
