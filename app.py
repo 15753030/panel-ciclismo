@@ -36,7 +36,7 @@ if intervals_id and intervals_api_key:
         if response.status_code == 404:
             fecha_ayer = (datetime.now() - timedelta(days=1)
                           ).strftime("%Y-%m-%d")
-            url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_hoy}"
+            url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_ayer}"
             response = requests.get(url, auth=(
                 "API_KEY", intervals_api_key), timeout=5)
 
