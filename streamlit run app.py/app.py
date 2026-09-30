@@ -1,10 +1,14 @@
 """Panel Inteligente de Autorregulación & Rendimiento Ciclista."""
 
+from datetime import date, timedelta
+import requests
 import os
 from datetime import datetime, timedelta
 import pandas as pd
 import requests  # <--- AGREGA ESTA LÍNEA AQUÍ
 import streamlit as st
+import plotly.graph_objects as go
+
 
 st.set_page_config(page_title="App Autorregulada - Luciano", layout="wide")
 
@@ -30,13 +34,16 @@ if intervals_id and intervals_api_key:
         # Primero intentamos con el día de hoy
         fecha_hoy = datetime.now().strftime("%Y-%m-%d")
         url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_hoy}"
-        response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
-        
+        response = requests.get(url, auth=(
+            "API_KEY", intervals_api_key), timeout=5)
+
         # Si hoy da 404 (no existe registro creado aún), caemos en ayer
         if response.status_code == 404:
-            fecha_ayer = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+            fecha_ayer = (datetime.now() - timedelta(days=1)
+                          ).strftime("%Y-%m-%d")
             url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_ayer}"
-            response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
+            response = requests.get(url, auth=(
+                "API_KEY", intervals_api_key), timeout=5)
 
         if response.status_code == 200:
             data_wellness = response.json()
@@ -51,7 +58,8 @@ if intervals_id and intervals_api_key:
                     tsb_actual = ctl - atl
             st.sidebar.success("¡Sincronizado con Intervals.icu!")
         else:
-            st.sidebar.warning(f"Sin registro activo (Código {response.status_code}). Usando manual.")
+            st.sidebar.warning(
+                f"Sin registro activo (Código {response.status_code}). Usando manual.")
     except Exception:
         st.sidebar.warning("Usando valores manuales (error de conexión).")
 
@@ -202,14 +210,8 @@ if os.path.exists(archivo_historico):
     else:
         st.info("Guarda registros diarios para habilitar los gráficos.")
 
-fechas = [item.get("id") for item in historico_data]
-    ctl = [item.get("ctl", 0) or 0 for item in historico_data]
-    atl = [item.get("atl", 0) or 0 for item in historico_data]
-    tsb = [item.get("tsb", 0) or 0 for item in historico_data]
 
-    fig = go.Figure()
-
-    def mostrar_grafico_ctl_atl(historico_data):
+def mostrar_grafico_ctl_atl(historico_data):
     if not historico_data:
         st.info("No hay datos históricos suficientes para mostrar el gráfico.")
         return
@@ -221,7 +223,8 @@ fechas = [item.get("id") for item in historico_data]
 
     fig = go.Figure()
 
-    def mostrar_grafico_ctl_atl(historico_data):
+
+def mostrar_grafico_ctl_atl(historico_data):
     if not historico_data:
         st.info("No hay datos históricos suficientes para mostrar el gráfico.")
         return
@@ -253,5 +256,35 @@ fechas = [item.get("id") for item in historico_data]
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+
+# --- 1. Función para obtener los datos desde Intervals.icu ---
+
+
+def obtener_historico_wellness(api_key, athlete_id):
+    hoy = date.today()
+    hace_30_dias = hoy - timedelta(days=30)
+
+    url = f"https://intervals.icu/api/v1/athlete/{athlete_id}/wellness?oldest={hace_30_dias.isoformat()}&newest={hoy.isoformat()}"
+
+    # Intervals.icu utiliza Basic Auth con el usuario 'API_KEY' y tu clave como contraseña
+    response = requests.get(url, auth=('API_KEY', api_key))
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Error al obtener datos históricos: {response.status_code}")
+        return []
+
+
+# --- 2. En la sección principal de tu app (donde dibujas la interfaz) ---
+st.subheader("📊 Análisis de Carga de Entrenamiento")
+
+# Asegúrate de tener definidas tus variables 'api_key' y 'athlete_id' (o de llamarlas desde st.secrets)
+# Por ejemplo: api_key = st.secrets["INTERVALS_API_KEY"] y athlete_id = st.secrets["ATHLETE_ID"]
+
+datos_historico = obtener_historico_wellness(api_key, athlete_id)
+mostrar_grafico_ctl_atl(datos_historico)
+
 
         
