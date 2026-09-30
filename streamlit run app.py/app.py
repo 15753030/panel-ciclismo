@@ -27,9 +27,8 @@ tsb_actual = 7.0
 # Intentamos traer datos automáticos de la API si están las credenciales
 if intervals_id and intervals_api_key:
     try:
-        fecha_ayer = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-        url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_ayer}"
-        response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
+        fecha_hoy = datetime.now().strftime("%Y-%m-%d")
+        url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_hoy}"
         if response.status_code == 200:
             data_wellness = response.json()
             if data_wellness:
