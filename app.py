@@ -40,7 +40,7 @@ if intervals_id and intervals_api_key:
             response = requests.get(url, auth=(
                 "API_KEY", intervals_api_key), timeout=5)
 
-       if response.status_code == 200:
+if response.status_code == 200:
             data_wellness = response.json()
             if data_wellness:
                 if "hrv" in data_wellness and data_wellness["hrv"] is not None:
