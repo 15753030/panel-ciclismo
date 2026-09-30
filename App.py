@@ -1,14 +1,11 @@
 """Panel Inteligente de Autorregulación & Rendimiento Ciclista."""
 
-from datetime import date, timedelta
-import requests
+from datetime import date, datetime, timedelta
 import os
-from datetime import datetime, timedelta
 import pandas as pd
-import requests  # <--- AGREGA ESTA LÍNEA AQUÍ
-import streamlit as st
 import plotly.graph_objects as go
-
+import requests
+import streamlit as st
 
 st.set_page_config(page_title="App Autorregulada - Luciano", layout="wide")
 
@@ -31,19 +28,14 @@ tsb_actual = 7.0
 # Intentamos traer datos automáticos de la API si están las credenciales
 if intervals_id and intervals_api_key:
     try:
-        # Primero intentamos con el día de hoy
         fecha_hoy = datetime.now().strftime("%Y-%m-%d")
         url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_hoy}"
-        response = requests.get(url, auth=(
-            "API_KEY", intervals_api_key), timeout=5)
+        response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
 
-        # Si hoy da 404 (no existe registro creado aún), caemos en ayer
         if response.status_code == 404:
-            fecha_ayer = (datetime.now() - timedelta(days=1)
-                          ).strftime("%Y-%m-%d")
+            fecha_ayer = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
             url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_ayer}"
-            response = requests.get(url, auth=(
-                "API_KEY", intervals_api_key), timeout=5)
+            response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
 
         if response.status_code == 200:
             data_wellness = response.json()
@@ -53,13 +45,14 @@ if intervals_id and intervals_api_key:
                 if "restingHR" in data_wellness and data_wellness["restingHR"] is not None:
                     rhr_input_default = float(data_wellness["restingHR"])
                 if "ctl" in data_wellness and "atl" in data_wellness:
-                    ctl = data_wellness.get("ctl", 0) or 0
-                    atl = data_wellness.get("atl", 0) or 0
-                    tsb_actual = ctl - atl
+                    ctl_val = data_wellness.get("ctl", 0) or 0
+                    atl_val = data_wellness.get("atl", 0) or 0
+                    tsb_actual = ctl_val - atl_val
             st.sidebar.success("¡Sincronizado con Intervals.icu!")
         else:
             st.sidebar.warning(
-                f"Sin registro activo (Código {response.status_code}). Usando manual.")
+                f"Sin registro activo (Código {response.status_code}). Usando manual."
+            )
     except Exception:
         st.sidebar.warning("Usando valores manuales (error de conexión).")
 
@@ -78,7 +71,6 @@ sueno_hoy = st.sidebar.number_input(
 st.sidebar.markdown("---")
 st.sidebar.header("⚡ Configuración de Umbrales")
 ftp_usuario = st.sidebar.number_input("FTP Base (W)", value=290, step=5)
-st.sidebar.warning("Usando valores manuales (sin conexión activa).")
 
 VFC_BASE_MEDIA = 58.0
 RHR_BASE_MEDIA = 46.0
@@ -102,13 +94,11 @@ with col3:
 with col4:
     st.metric(
         label="Estado de Forma (TSB)",
-        value="+7 (Fresco)",
+        value=f"{tsb_actual:+g} (Fresco)" if tsb_actual >= 0 else f"{tsb_actual:+g} (Fatiga)",
         delta="Asimilando carga",
     )
 
-st.markdown(
-    "### 🚦 Evaluación Fisiológica Inteligente y Prescripción Dinámica"
-)
+st.markdown("### 🚦 Evaluación Fisiológica Inteligente y Prescripción Dinámica")
 
 
 def evaluar_entrenamiento_inteligente(vfc, rhr, vfc_base):
@@ -190,10 +180,10 @@ if st.sidebar.button("Guardar Registro Matutino"):
 
     st.sidebar.success("¡Registro guardado con éxito en el historial!")
 
-# Módulo de tendencias e historial visual
+# Módulo de tendencias e historial visual local
 if os.path.exists(archivo_historico):
     st.markdown("---")
-    st.markdown("### 📈 Tendencias y Evolución Fisiológica")
+    st.markdown("### 📈 Tendencias y Evolución Fisiológica (Check-ins)")
 
     df_hist = pd.read_csv(archivo_historico)
 
@@ -206,27 +196,29 @@ if os.path.exists(archivo_historico):
 
         with tab2:
             st.markdown("**Registro Completo de Check-ins**")
-            st.dataframe(df_hist, use_container_width=True)
+            st.dataframe(df_hist, width="stretch")
     else:
         st.info("Guarda registros diarios para habilitar los gráficos.")
 
 
+# --- Función para obtener los datos desde Intervals.icu ---
+def obtener_historico_wellness(api_key, athlete_id):
+    hoy = date.today()
+    hace_30_dias = hoy - timedelta(days=30)
+
+    url = f"https://intervals.icu/api/v1/athlete/{athlete_id}/wellness?oldest={hace_30_dias.isoformat()}&newest={hoy.isoformat()}"
+    response = requests.get(url, auth=("API_KEY", api_key))
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return []
+
+
+# --- Función para mostrar el gráfico unificado de CTL, ATL y TSB ---
 def mostrar_grafico_ctl_atl(historico_data):
     if not historico_data:
-        st.info("No hay datos históricos suficientes para mostrar el gráfico.")
-        return
-
-    fechas = [item.get("id") for item in historico_data]
-    ctl = [item.get("ctl", 0) or 0 for item in historico_data]
-    atl = [item.get("atl", 0) or 0 for item in historico_data]
-    tsb = [item.get("tsb", 0) or 0 for item in historico_data]
-
-    fig = go.Figure()
-
-
-def mostrar_grafico_ctl_atl(historico_data):
-    if not historico_data:
-        st.info("No hay datos históricos suficientes para mostrar el gráfico.")
+        st.info("No hay datos históricos suficientes para mostrar el gráfico de carga.")
         return
 
     fechas = [item.get("id") for item in historico_data]
@@ -255,36 +247,16 @@ def mostrar_grafico_ctl_atl(historico_data):
                     y=1.02, xanchor="right", x=1)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
-# --- 1. Función para obtener los datos desde Intervals.icu ---
+# --- Sección Principal de Análisis de Carga con la API ---
+st.markdown("---")
+st.subheader("📊 Análisis de Carga de Entrenamiento (Intervals.icu)")
 
-
-def obtener_historico_wellness(api_key, athlete_id):
-    hoy = date.today()
-    hace_30_dias = hoy - timedelta(days=30)
-
-    url = f"https://intervals.icu/api/v1/athlete/{athlete_id}/wellness?oldest={hace_30_dias.isoformat()}&newest={hoy.isoformat()}"
-
-    # Intervals.icu utiliza Basic Auth con el usuario 'API_KEY' y tu clave como contraseña
-    response = requests.get(url, auth=('API_KEY', api_key))
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error(f"Error al obtener datos históricos: {response.status_code}")
-        return []
-
-
-# --- 2. En la sección principal de tu app (donde dibujas la interfaz) ---
-st.subheader("📊 Análisis de Carga de Entrenamiento")
-
-# Asegúrate de tener definidas tus variables 'api_key' y 'athlete_id' (o de llamarlas desde st.secrets)
-# Por ejemplo: api_key = st.secrets["INTERVALS_API_KEY"] y athlete_id = st.secrets["ATHLETE_ID"]
-
-datos_historico = obtener_historico_wellness(api_key, athlete_id)
-mostrar_grafico_ctl_atl(datos_historico)
-
-
-        
+if intervals_id and intervals_api_key:
+    with st.spinner("Descargando métricas de carga desde Intervals.icu..."):
+        datos_historicos_api = obtener_historico_wellness(intervals_api_key, intervals_id)
+        mostrar_grafico_ctl_atl(datos_historicos_api)
+else:
+    st.info("💡 Ingresa tu Athlete ID y tu API Key en la barra lateral para visualizar las curvas de Fitness, Fatiga y Forma.")
