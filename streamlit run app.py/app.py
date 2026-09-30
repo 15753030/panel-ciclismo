@@ -11,29 +11,20 @@ st.set_page_config(page_title="App Autorregulada - Luciano", layout="wide")
 st.title("⚡ Panel Inteligente de Autorregulación & Rendimiento Ciclista")
 st.markdown("---")
 
-# --- NUEVO: Conexión opcional Intervals.icu ---
+# --- Configuración y Sincronización Intervals.icu & Registro Matutino ---
 st.sidebar.header("🔗 Conexión Intervals.icu")
 intervals_id = st.sidebar.text_input("Athlete ID", value="")
 intervals_api_key = st.sidebar.text_input(
     "API Key", value="", type="password"
 )
-# Barra lateral para ingreso de métricas matutinas
-st.sidebar.header("📊 Registro Matutino")
-vfc_hoy = st.sidebar.number_input(
-    "VFC Nocturna (ms)", min_value=30.0, max_value=100.0, value=63.0, step=1.0
-)
-rhr_hoy = st.sidebar.number_input(
-    "FC Reposo (bpm)", min_value=35.0, max_value=70.0, value=46.0, step=1.0
-)
-sueno_hoy = st.sidebar.number_input(
-    "Horas de Sueño", min_value=3.0, max_value=12.0, value=8.5, step=0.5
-)
-# --- NUEVO: Control de Zonas de Potencia Dinámicas ---
-st.sidebar.markdown("---")
-st.sidebar.header("⚡ Configuración de Umbrales")
-ftp_usuario = st.sidebar.number_input("FTP Base (W)", value=290, step=5)
-# --- NUEVO: Sincronización automática de datos ---
+
+# Valores por defecto iniciales
+vfc_input_default = 58.0
+rhr_input_default = 46.0
+sueno_input_default = 8.0
 tsb_actual = 7.0
+
+# Intentamos traer datos automáticos de la API si están las credenciales
 if intervals_id and intervals_api_key:
     try:
         fecha_ayer = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -41,16 +32,36 @@ if intervals_id and intervals_api_key:
         response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
         if response.status_code == 200:
             data_wellness = response.json()
-            if "hrv" in data_wellness and data_wellness["hrv"]:
-                vfc_hoy = float(data_wellness["hrv"])
-            if "restingHR" in data_wellness and data_wellness["restingHR"]:
-                rhr_hoy = float(data_wellness["restingHR"])
-            if "ctl" in data_wellness and "atl" in data_wellness:
-                ctl = data_wellness.get("ctl", 0)
-                atl = data_wellness.get("atl", 0)
-                tsb_actual = ctl - atl
+            if data_wellness:
+                if "hrv" in data_wellness and data_wellness["hrv"] is not None:
+                    vfc_input_default = float(data_wellness["hrv"])
+                if "restingHR" in data_wellness and data_wellness["restingHR"] is not None:
+                    rhr_input_default = float(data_wellness["restingHR"])
+                if "ctl" in data_wellness and "atl" in data_wellness:
+                    ctl = data_wellness.get("ctl", 0) or 0
+                    atl = data_wellness.get("atl", 0) or 0
+                    tsb_actual = ctl - atl
             st.sidebar.success("¡Sincronizado con Intervals.icu!")
+        else:
+            st.sidebar.warning("Usando valores manuales (sin respuesta de API).")
     except Exception:
+        st.sidebar.warning("Usando valores manuales (error de conexión).")
+
+st.sidebar.header("📊 Registro Matutino")
+vfc_hoy = st.sidebar.number_input(
+    "VFC Nocturna (ms)", min_value=10.0, max_value=150.0, value=vfc_input_default, step=1.0
+)
+rhr_hoy = st.sidebar.number_input(
+    "FC Reposo (bpm)", min_value=30.0, max_value=90.0, value=rhr_input_default, step=1.0
+)
+sueno_hoy = st.sidebar.number_input(
+    "Horas de Sueño", min_value=1.0, max_value=15.0, value=sueno_input_default, step=0.5
+)
+
+# --- Control de Zonas de Potencia Dinámicas ---
+st.sidebar.markdown("---")
+st.sidebar.header("⚡ Configuración de Umbrales")
+ftp_usuario = st.sidebar.number_input("FTP Base (W)", value=290, step=5)
         st.sidebar.warning("Usando valores manuales (sin conexión activa).")
 
 VFC_BASE_MEDIA = 58.0
