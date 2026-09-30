@@ -25,7 +25,6 @@ sueno_input_default = 8.0
 tsb_actual = 7.0
 
 # Intentamos traer datos automáticos de la API si están las credenciales
-# Intentamos traer datos automáticos de la API
 if intervals_id and intervals_api_key:
     try:
         # Primero intentamos con el día de hoy
