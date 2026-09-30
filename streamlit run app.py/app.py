@@ -202,4 +202,32 @@ if os.path.exists(archivo_historico):
     else:
         st.info("Guarda registros diarios para habilitar los gráficos.")
 
+fechas = [item.get("id") for item in historico_data]
+    ctl = [item.get("ctl", 0) or 0 for item in historico_data]
+    atl = [item.get("atl", 0) or 0 for item in historico_data]
+    tsb = [item.get("tsb", 0) or 0 for item in historico_data]
+
+    fig = go.Figure()
+
+    # Curva de Fitness (CTL)
+    fig.add_trace(go.Scatter(x=fechas, y=ctl, mode='lines',
+                  name='Fitness (CTL)', line=dict(color='blue', width=2)))
+    # Curva de Fatiga (ATL)
+    fig.add_trace(go.Scatter(x=fechas, y=atl, mode='lines',
+                  name='Fatiga (ATL)', line=dict(color='orange', width=2)))
+    # Curva de Estado de Forma (TSB)
+    fig.add_trace(go.Scatter(x=fechas, y=tsb, mode='lines',
+                  name='Forma (TSB)', line=dict(color='green', width=2)))
+
+    fig.update_layout(
+        title="Evolución de Carga de Entrenamiento (30 Días)",
+        xaxis_title="Fecha",
+        yaxis_title="Valor",
+        template="plotly_dark",
+        legend=dict(orientation="h", yanchor="bottom",
+                    y=1.02, xanchor="right", x=1)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
         
