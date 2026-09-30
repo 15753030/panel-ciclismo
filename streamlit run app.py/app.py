@@ -62,7 +62,7 @@ sueno_hoy = st.sidebar.number_input(
 st.sidebar.markdown("---")
 st.sidebar.header("⚡ Configuración de Umbrales")
 ftp_usuario = st.sidebar.number_input("FTP Base (W)", value=290, step=5)
-        st.sidebar.warning("Usando valores manuales (sin conexión activa).")
+st.sidebar.warning("Usando valores manuales (sin conexión activa).")
 
 VFC_BASE_MEDIA = 58.0
 RHR_BASE_MEDIA = 46.0
