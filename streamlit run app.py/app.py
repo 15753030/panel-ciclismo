@@ -209,6 +209,30 @@ fechas = [item.get("id") for item in historico_data]
 
     fig = go.Figure()
 
+    def mostrar_grafico_ctl_atl(historico_data):
+    if not historico_data:
+        st.info("No hay datos históricos suficientes para mostrar el gráfico.")
+        return
+
+    fechas = [item.get("id") for item in historico_data]
+    ctl = [item.get("ctl", 0) or 0 for item in historico_data]
+    atl = [item.get("atl", 0) or 0 for item in historico_data]
+    tsb = [item.get("tsb", 0) or 0 for item in historico_data]
+
+    fig = go.Figure()
+
+    def mostrar_grafico_ctl_atl(historico_data):
+    if not historico_data:
+        st.info("No hay datos históricos suficientes para mostrar el gráfico.")
+        return
+
+    fechas = [item.get("id") for item in historico_data]
+    ctl = [item.get("ctl", 0) or 0 for item in historico_data]
+    atl = [item.get("atl", 0) or 0 for item in historico_data]
+    tsb = [item.get("tsb", 0) or 0 for item in historico_data]
+
+    fig = go.Figure()
+
     # Curva de Fitness (CTL)
     fig.add_trace(go.Scatter(x=fechas, y=ctl, mode='lines',
                   name='Fitness (CTL)', line=dict(color='blue', width=2)))
