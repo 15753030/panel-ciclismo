@@ -25,10 +25,20 @@ sueno_input_default = 8.0
 tsb_actual = 7.0
 
 # Intentamos traer datos automáticos de la API si están las credenciales
+# Intentamos traer datos automáticos de la API
 if intervals_id and intervals_api_key:
     try:
+        # Primero intentamos con el día de hoy
         fecha_hoy = datetime.now().strftime("%Y-%m-%d")
         url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_hoy}"
+        response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
+        
+        # Si hoy da 404 (no existe registro creado aún), caemos en ayer
+        if response.status_code == 404:
+            fecha_ayer = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+            url = f"https://intervals.icu/api/v1/athlete/{intervals_id}/wellness/{fecha_ayer}"
+            response = requests.get(url, auth=("API_KEY", intervals_api_key), timeout=5)
+
         if response.status_code == 200:
             data_wellness = response.json()
             if data_wellness:
@@ -42,7 +52,7 @@ if intervals_id and intervals_api_key:
                     tsb_actual = ctl - atl
             st.sidebar.success("¡Sincronizado con Intervals.icu!")
         else:
-            st.sidebar.warning("Usando valores manuales (sin respuesta de API).")
+            st.sidebar.warning(f"Sin registro activo (Código {response.status_code}). Usando manual.")
     except Exception:
         st.sidebar.warning("Usando valores manuales (error de conexión).")
 
