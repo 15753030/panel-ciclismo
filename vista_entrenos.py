@@ -78,7 +78,8 @@ def seccion_entrenamientos(athlete_id, api_key, ftp_app):
     st.markdown("---")
     st.subheader("🚴 Entrenamientos")
     if not (athlete_id and api_key):
-        st.info("Conecta Intervals.icu en la barra lateral para ver tus entrenamientos.")
+        st.info(
+            "Conecta Intervals.icu en la barra lateral para ver tus entrenamientos.")
         return
 
     dias = st.selectbox("Período", [14, 30, 60, 90], index=1,
@@ -112,18 +113,21 @@ def _tabla_lista(acts: pd.DataFrame):
     if "Duración" in vista:
         vista["Duración"] = vista["Duración"].apply(_hms)
     if "Km" in vista:
-        vista["Km"] = (pd.to_numeric(vista["Km"], errors="coerce") / 1000).round(1)
+        vista["Km"] = (pd.to_numeric(
+            vista["Km"], errors="coerce") / 1000).round(1)
     st.dataframe(vista, hide_index=True, use_container_width=True)
 
 
 def _detalle_vista(api_key, actividad_id, fila, ftp_app):
     detalle, error_d = _detalle(api_key, actividad_id)
     if error_d or not detalle:
-        st.warning(f"No pude traer el detalle completo. {error_d or ''} Muestro el resumen.")
+        st.warning(
+            f"No pude traer el detalle completo. {error_d or ''} Muestro el resumen.")
         detalle = fila
     streams, error_s = _streams(api_key, actividad_id)
     ftp = _primero(detalle, "icu_ftp") or ftp_app
-    propias = entrenos.metricas_propias(streams, ftp) if not streams.empty else {}
+    propias = entrenos.metricas_propias(
+        streams, ftp) if not streams.empty else {}
 
     t_resumen, t_graf, t_metricas, t_inter, t_mios, t_campos = st.tabs([
         "Resumen", "Gráficos", "Mis métricas vs Intervals", "Intervalos",
@@ -148,15 +152,20 @@ def _tab_resumen(d, ftp):
     items = [
         ("Duración", _hms(_primero(d, "moving_time", "elapsed_time"))),
         ("Distancia", _num(dist / 1000 if dist else None, "{:.1f}", " km")),
-        ("Desnivel", _num(_primero(d, "total_elevation_gain"), "{:.0f}", " m")),
-        ("Potencia media", _num(_primero(d, "icu_average_watts", "average_watts"), "{:.0f}", " W")),
-        ("Potencia normalizada", _num(_primero(d, "icu_weighted_avg_watts"), "{:.0f}", " W")),
+        ("Desnivel", _num(
+            _primero(d, "total_elevation_gain"), "{:.0f}", " m")),
+        ("Potencia media", _num(
+            _primero(d, "icu_average_watts", "average_watts"), "{:.0f}", " W")),
+        ("Potencia normalizada", _num(
+            _primero(d, "icu_weighted_avg_watts"), "{:.0f}", " W")),
         ("Carga (TSS)", _num(_primero(d, "icu_training_load"))),
         ("Intensidad", _num(_primero(d, "icu_intensity"), "{:.1f}")),
-        ("FTP de ese día", _num(_primero(d, "icu_ftp") or ftp, "{:.0f}", " W")),
+        ("FTP de ese día", _num(
+            _primero(d, "icu_ftp") or ftp, "{:.0f}", " W")),
         ("FC media", _num(_primero(d, "average_heartrate"), "{:.0f}", " bpm")),
         ("FC máxima", _num(_primero(d, "max_heartrate"), "{:.0f}", " bpm")),
-        ("Cadencia media", _num(_primero(d, "average_cadence"), "{:.0f}", " rpm")),
+        ("Cadencia media", _num(
+            _primero(d, "average_cadence"), "{:.0f}", " rpm")),
         ("Calorías", _num(_primero(d, "calories"))),
     ]
     for i in range(0, len(items), 4):
@@ -174,49 +183,76 @@ def _tab_graficos(streams, error):
         return
     minutos = streams.index / 60.0
     paso = max(1, len(streams) // 2000)
+
+    # Definimos cada serie con su etiqueta y unidad para el cursor
     series = [
-        ("watts", "Potencia (W, media de 30 s)", "orange", 30),
-        ("heartrate", "Frecuencia cardíaca (bpm)", "red", 1),
-        ("cadence", "Cadencia (rpm)", "deepskyblue", 5),
-        ("altitude", "Altitud (m)", "gray", 1),
+        ("watts", "Potencia (W, media de 30 s)", "orange", 30, "Potencia", "W"),
+        ("heartrate", "Frecuencia cardíaca (bpm)", "red", 1, "FC", "bpm"),
+        ("cadence", "Cadencia (rpm)", "deepskyblue", 5, "Cadencia", "rpm"),
+        ("altitude", "Altitud (m)", "gray", 1, "Altitud", "m"),
     ]
+
     dibujados = 0
-    for col, titulo, color, suavizado in series:
+    for col, titulo, color, suavizado, et_y, unidad in series:
         if col not in streams or not streams[col].notna().any():
             continue
-        y = streams[col].rolling(suavizado, min_periods=1).mean() if suavizado > 1 else streams[col]
-        fig = go.Figure(go.Scatter(x=minutos[::paso], y=y.iloc[::paso], mode="lines",
-                                   line=dict(color=color, width=1.5), name=titulo))
-        fig.update_layout(title=titulo, xaxis_title="Minutos", height=260,
-                          template="plotly_dark", margin=dict(l=10, r=10, t=40, b=30),
-                          showlegend=False)
+        y = streams[col].rolling(suavizado, min_periods=1).mean(
+        ) if suavizado > 1 else streams[col]
+
+        fig = go.Figure(go.Scatter(
+            x=minutos[::paso],
+            y=y.iloc[::paso],
+            mode="lines",
+            line=dict(color=color, width=1.5),
+            name=titulo,
+            hovertemplate=f"Minuto: %{{x:.1f}} min<br>{et_y}: %{{y:.0f}} {unidad}<extra></extra>"
+        ))
+
+        fig.update_layout(
+            title=titulo,
+            xaxis_title="Minutos",
+            height=260,
+            template="plotly_dark",
+            margin=dict(l=10, r=10, t=40, b=30),
+            showlegend=False
+        )
         st.plotly_chart(fig, use_container_width=True)
         dibujados += 1
+
     if not dibujados:
         st.info("No hay potencia, pulso ni cadencia en este entreno.")
 
 
 def _tab_metricas(d, propias, ftp, sin_streams):
     if sin_streams or not propias:
-        st.info("Para calcular tus métricas hacen falta los datos de potencia segundo a segundo.")
+        st.info(
+            "Para calcular tus métricas hacen falta los datos de potencia segundo a segundo.")
         return
     filas = [
-        ("Potencia media (W)", propias.get("pot_media"), _primero(d, "icu_average_watts", "average_watts"), True),
-        ("Potencia normalizada (W)", propias.get("np"), _primero(d, "icu_weighted_avg_watts"), True),
+        ("Potencia media (W)", propias.get("pot_media"), _primero(
+            d, "icu_average_watts", "average_watts"), True),
+        ("Potencia normalizada (W)", propias.get("np"),
+         _primero(d, "icu_weighted_avg_watts"), True),
         ("TSS", propias.get("tss"), _primero(d, "icu_training_load"), True),
-        ("Factor de intensidad (IF)", propias.get("if"), _primero(d, "icu_intensity"), False),
-        ("Índice de variabilidad", propias.get("vi"), _primero(d, "icu_variability_index"), True),
-        ("Eficiencia (NP / FC)", propias.get("ef"), _primero(d, "icu_efficiency_factor"), True),
-        ("Desacople potencia-pulso (%)", propias.get("desacople_pct"), _primero(d, "decoupling"), True),
+        ("Factor de intensidad (IF)", propias.get(
+            "if"), _primero(d, "icu_intensity"), False),
+        ("Índice de variabilidad", propias.get("vi"),
+         _primero(d, "icu_variability_index"), True),
+        ("Eficiencia (NP / FC)", propias.get("ef"),
+         _primero(d, "icu_efficiency_factor"), True),
+        ("Desacople potencia-pulso (%)", propias.get("desacople_pct"),
+         _primero(d, "decoupling"), True),
         ("Trabajo (kJ)", propias.get("trabajo_kj"), None, False),
     ]
     tabla = []
     for nombre, mio, de_icu, comparar in filas:
-        dif = (float(mio) - float(de_icu)) if comparar and _valido(mio) and _valido(de_icu) else None
+        dif = (float(mio) - float(de_icu)
+               ) if comparar and _valido(mio) and _valido(de_icu) else None
         tabla.append({"Métrica": nombre, "Calculada por ti": _num(mio, "{:.2f}"),
                       "Intervals.icu": _num(de_icu, "{:.2f}"),
                       "Diferencia": _num(dif, "{:+.2f}")})
-    st.dataframe(pd.DataFrame(tabla), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(tabla), hide_index=True,
+                 use_container_width=True)
     st.caption(f"Calculado con un FTP de {_num(ftp)} W. Intervals.icu puede mostrar la intensidad "
                "en porcentaje, por eso ahí no se calcula la diferencia. Pequeñas diferencias son "
                "normales: cada programa trata las pausas y el suavizado a su manera. El desacople "
@@ -249,20 +285,24 @@ def _tab_intervalos(d):
                   "weighted_average_watts", "average_heartrate", "max_heartrate",
                   "average_cadence", "intensity", "training_load", "decoupling"]
     columnas = [c for c in preferidas if c in df]
-    st.dataframe(df[columnas] if columnas else df, hide_index=True, use_container_width=True)
+    st.dataframe(df[columnas] if columnas else df,
+                 hide_index=True, use_container_width=True)
 
 
 def _tab_mis_datos(actividad_id):
     previo = almacen.leer_extra_actividad(actividad_id)
-    st.caption("Lo que anotes aquí se guarda en tu base de datos, no en Intervals.icu.")
-    tipo_prev = previo.get("tipo") if previo.get("tipo") in TIPOS else "Sin definir"
+    st.caption(
+        "Lo que anotes aquí se guarda en tu base de datos, no en Intervals.icu.")
+    tipo_prev = previo.get("tipo") if previo.get(
+        "tipo") in TIPOS else "Sin definir"
     tipo = st.selectbox("Tipo de sesión", TIPOS, index=TIPOS.index(tipo_prev),
                         key=f"tipo_{actividad_id}")
     rpe = st.slider("RPE de la sesión (1 fácil – 10 máximo)", 0, 10,
                     int(previo.get("rpe") or 0), key=f"rpe_{actividad_id}")
     sens = st.slider("Sensación durante el entreno (1 mal – 5 muy bien)", 0, 5,
                      int(previo.get("sensacion") or 0), key=f"sens_{actividad_id}")
-    notas = st.text_area("Notas", value=previo.get("notas") or "", key=f"notas_{actividad_id}")
+    notas = st.text_area("Notas", value=previo.get(
+        "notas") or "", key=f"notas_{actividad_id}")
     if st.button("Guardar mis datos de este entreno", key=f"guardar_{actividad_id}"):
         almacen.guardar_extra_actividad(
             actividad_id, tipo=None if tipo == "Sin definir" else tipo,
@@ -276,6 +316,8 @@ def _tab_campos(d):
     tabla = pd.DataFrame({"Campo": list(plano), "Valor": [str(v) if v is not None else "—"
                                                           for v in plano.values()]})
     if filtro:
-        tabla = tabla[tabla["Campo"].str.contains(filtro, case=False, regex=False)]
-    st.caption(f"{len(plano)} campos recibidos de Intervals.icu para este entreno.")
+        tabla = tabla[tabla["Campo"].str.contains(
+            filtro, case=False, regex=False)]
+    st.caption(
+        f"{len(plano)} campos recibidos de Intervals.icu para este entreno.")
     st.dataframe(tabla, hide_index=True, use_container_width=True)
